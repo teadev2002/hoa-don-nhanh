@@ -291,7 +291,7 @@
       "8936011773177": { name: "Bánh Karo Trứng Tươi", price: 12000 }
     };
 
-    let html5QrcodeScanner = null;
+    let html5QrCode = null;
 
     function simulateScan() {
       startScanner();
@@ -301,36 +301,41 @@
       const modal = document.getElementById('scanner-modal');
       modal.classList.remove('hidden');
 
-      // Kiểm tra nếu chưa có scanner thì mới tạo mới
-      if (!html5QrcodeScanner) {
-        html5QrcodeScanner = new Html5QrcodeScanner(
-          "qr-reader",
-          {
-            fps: 15, // Tăng fps để quét nhạy hơn
-            qrbox: { width: 280, height: 180 }, // Khung hình chữ nhật phù hợp mã vạch
-            aspectRatio: 1.0,
-            rememberLastUsedCamera: true,
-            supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA]
-          },
-          /* verbose= */ false
-        );
+      // Check for HTTPS
+      if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+        alert('LỖI BẢO MẬT: Camera chỉ hoạt động trên HTTPS hoặc Localhost.\nNếu bạn đang test qua IP mạng LAN, hãy dùng HTTPS hoặc ngrok.');
       }
 
-      // Render scanner
-      html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+      // Use Html5Qrcode class for explicit error handling
+      if (!html5QrCode) {
+        html5QrCode = new Html5Qrcode("qr-reader");
+      }
+
+      const config = { fps: 15, qrbox: { width: 250, height: 150 } };
+
+      // Prefer back camera
+      html5QrCode.start(
+        { facingMode: "environment" },
+        config,
+        onScanSuccess,
+        onScanFailure
+      ).catch(err => {
+        console.error("Error starting scanner", err);
+        alert("Không thể mở Camera!\nLỗi: " + err + "\nHãy cấp quyền Camera cho trình duyệt.\nHOẶC truy cập bằng HTTPS.");
+        stopScanner(); // close modal
+      });
     }
 
-    async function stopScanner() {
+    function stopScanner() {
       const modal = document.getElementById('scanner-modal');
       modal.classList.add('hidden');
-
-      if (html5QrcodeScanner) {
-        try {
-          // Phải dùng await clear() để giải phóng Camera hoàn toàn
-          await html5QrcodeScanner.clear();
-        } catch (error) {
-          console.error("Lỗi khi đóng camera:", error);
-        }
+      if (html5QrCode) {
+        html5QrCode.stop().then(() => {
+          console.log("Camera stopped");
+        }).catch(err => {
+          // Ignore if not running
+          console.warn("Stop failed (maybe not running)", err);
+        });
       }
     }
 
