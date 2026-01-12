@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sổ Thuế Tạp Hóa 2026</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+  <style>
+    body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f3f4f6;
+    }
+
+    .casio-btn {
+      transition: all 0.1s;
+      border-bottom: 4px solid #d1d5db;
+    }
+
+    .casio-btn:active {
+      transform: translateY(2px);
+      border-bottom-width: 2px;
+    }
+
+    .safe-glow {
+      box-shadow: 0 0 15px rgba(34, 197, 94, 0.5);
+    }
+
+    .fade-in {
+      animation: fadeIn 0.3s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  </style>
+</head>
+
+<body class="max-w-md mx-auto pb-24">
+  <header class="bg-white p-4 sticky top-0 z-10 shadow-sm">
+    <div class="flex justify-between items-center mb-2">
+      <h1 class="text-xl font-bold text-blue-800">Sổ Thuế 2026</h1>
+      <span class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold">● ĐANG AN TOÀN</span>
+    </div>
+    <div class="w-full bg-gray-200 h-4 rounded-full overflow-hidden">
+      <div id="risk-bar" class="bg-green-500 h-full transition-all duration-500" style="width: 5%"></div>
+    </div>
+    <p class="text-[10px] mt-1 text-gray-500 italic">
+      Mức độ rủi ro bị phạt: 0% - Chúc cô Lan bán đắt hàng!
+    </p>
+  </header>
+
+  <main class="p-4 space-y-6">
+    <!-- HOME VIEW -->
+    <div id="home-view" class="view-section fade-in">
+      <div onclick="simulateScan()"
+        class="bg-blue-600 h-32 rounded-2xl flex flex-col items-center justify-center text-white cursor-pointer active:bg-blue-700 shadow-lg">
+        <i class="fas fa-camera text-4xl mb-2"></i>
+        <span class="font-bold text-lg">CHỤP ĐƠN / QUÉT MÃ</span>
+        <span class="text-xs opacity-80">(Tự động nhận diện giá tiền)</span>
+      </div>
+
+      <div class="bg-white p-4 rounded-2xl shadow-md">
+        <p class="text-gray-600 font-bold mb-3 uppercase text-sm">
+          Nhập số tiền nhanh (VNĐ)
+        </p>
+        <div id="display"
+          class="bg-gray-100 text-right p-4 text-3xl font-mono mb-4 rounded border-2 border-gray-200 text-blue-900 font-bold">
+          0
+        </div>
+
+        <div class="grid grid-cols-3 gap-3">
+          <button onclick="appendNumber(7)"
+            class="casio-btn bg-white p-4 rounded-xl font-bold text-2xl border border-gray-200">
+            7
+          </button>
+          <button onclick="appendNumber(8)"
+            class="casio-btn bg-white p-4 rounded-xl font-bold text-2xl border border-gray-200">
+            8
+          </button>
+          <button onclick="appendNumber(9)"
+            class="casio-btn bg-white p-4 rounded-xl font-bold text-2xl border border-gray-200">
+            9
+          </button>
+
+          <button onclick="appendNumber(4)"
+            class="casio-btn bg-white p-4 rounded-xl font-bold text-2xl border border-gray-200">
+            4
+          </button>
+          <button onclick="appendNumber(5)"
+            class="casio-btn bg-white p-4 rounded-xl font-bold text-2xl border border-gray-200">
+            5
+          </button>
+          <button onclick="appendNumber(6)"
+            class="casio-btn bg-white p-4 rounded-xl font-bold text-2xl border border-gray-200">
+            6
+          </button>
+
+          <button onclick="appendNumber(1)"
+            class="casio-btn bg-white p-4 rounded-xl font-bold text-2xl border border-gray-200">
+            1
+          </button>
+          <button onclick="appendNumber(2)"
+            class="casio-btn bg-white p-4 rounded-xl font-bold text-2xl border border-gray-200">
+            2
+          </button>
+          <button onclick="appendNumber(3)"
+            class="casio-btn bg-white p-4 rounded-xl font-bold text-2xl border border-gray-200">
+            3
+          </button>
+
+          <button onclick="clearInput()"
+            class="casio-btn bg-red-50 p-4 rounded-xl font-bold text-2xl border border-red-200 text-red-600">
+            C
+          </button>
+          <button onclick="appendNumber(0)"
+            class="casio-btn bg-white p-4 rounded-xl font-bold text-2xl border border-gray-200">
+            0
+          </button>
+          <button onclick="appendTripleZero()"
+            class="casio-btn bg-white p-4 rounded-xl font-bold text-2xl border border-gray-200">
+            000
+          </button>
+        </div>
+      </div>
+
+      <div class="flex gap-2">
+        <button
+          class="flex-1 bg-green-500 text-white p-3 rounded-xl font-bold border-b-4 border-green-700 active:translate-y-1">
+          BÁN LẺ
+        </button>
+        <button
+          class="flex-1 bg-amber-500 text-white p-3 rounded-xl font-bold border-b-4 border-amber-700 active:translate-y-1">
+          BIẾU TẶNG
+        </button>
+      </div>
+
+      <button id="btn-submit" onclick="submitInvoice()"
+        class="w-full bg-blue-800 text-white py-5 rounded-2xl text-xl font-black shadow-xl active:scale-95 transition-transform mt-4">
+        XÁC NHẬN & GỬI THUẾ
+      </button>
+    </div>
+
+    <!-- HISTORY VIEW -->
+    <div id="history-view" class="view-section hidden fade-in">
+      <h2 class="text-xl font-bold text-blue-900 mb-4">Lịch Sử Giao Dịch</h2>
+      <div id="history-list" class="space-y-3">
+        <!-- History items will be injected here -->
+        <div class="text-center text-gray-400 py-10">
+          Chưa có giao dịch nào
+        </div>
+      </div>
+    </div>
+
+    <!-- REPORT VIEW -->
+    <div id="report-view" class="view-section hidden fade-in">
+      <h2 class="text-xl font-bold text-blue-900 mb-4">Báo Cáo Thuế</h2>
+      <div class="bg-white p-6 rounded-2xl shadow-md text-center">
+        <div class="text-gray-500 mb-2">Tổng doanh thu hôm nay</div>
+        <div id="report-total" class="text-3xl font-bold text-green-600 mb-6">0 đ</div>
+        <div class="w-full bg-gray-100 h-40 rounded-lg flex items-center justify-center mb-4">
+          <span class="text-gray-400 text-sm">Biểu đồ doanh thu (Demo)</span>
+        </div>
+        <p class="text-sm text-blue-600">Dữ liệu được cập nhật theo thời gian thực</p>
+      </div>
+    </div>
+
+    <!-- HELP VIEW -->
+    <div id="help-view" class="view-section hidden fade-in">
+      <h2 class="text-xl font-bold text-blue-900 mb-4">Trung Tâm Cứu Trợ</h2>
+      <div class="bg-red-50 border border-red-200 p-4 rounded-2xl mb-4">
+        <h3 class="font-bold text-red-700 mb-2"><i class="fas fa-phone-alt"></i> Hotline Khẩn Cấp</h3>
+        <p class="text-red-600">0987.654.321 (Anh Hùng IT)</p>
+      </div>
+      <div class="bg-white p-4 rounded-2xl shadow-sm">
+        <h3 class="font-bold text-gray-700 mb-2">Câu hỏi thường gặp</h3>
+        <ul class="list-disc list-inside text-sm text-gray-600 space-y-2">
+          <li>Cách sửa hóa đơn đã nhập?</li>
+          <li>Quét mã QR không nhận?</li>
+          <li>Máy bị treo phải làm sao?</li>
+        </ul>
+      </div>
+    </div>
+  </main>
+
+  <nav
+    class="fixed bottom-0 left-0 right-0 bg-white border-t flex justify-around p-3 text-[10px] font-bold text-gray-400 z-50">
+    <div id="nav-home" onclick="switchView('home')"
+      class="nav-item text-blue-700 flex flex-col items-center cursor-pointer transition-colors">
+      <i class="fas fa-home text-xl"></i>
+      <span>TRANG CHỦ</span>
+    </div>
+    <div id="nav-history" onclick="switchView('history')"
+      class="nav-item flex flex-col items-center cursor-pointer transition-colors hover:text-blue-500">
+      <i class="fas fa-history text-xl"></i>
+      <span>LỊCH SỬ</span>
+    </div>
+    <div id="nav-report" onclick="switchView('report')"
+      class="nav-item flex flex-col items-center cursor-pointer transition-colors hover:text-blue-500">
+      <i class="fas fa-file-invoice-dollar text-xl"></i>
+      <span>BÁO CÁO</span>
+    </div>
+    <div id="nav-help" onclick="switchView('help')"
+      class="nav-item flex flex-col items-center cursor-pointer transition-colors hover:text-red-500 text-red-400">
+      <i class="fas fa-shield-alt text-xl"></i>
+      <span>CỨU TRỢ</span>
+    </div>
+  </nav>
+
+  <script>
+    let currentTotal = 0;
+    // Load transactions from localStorage or default to empty array
+    let transactions = JSON.parse(localStorage.getItem('transactions')) || [];
+    const display = document.getElementById("display");
+    const riskBar = document.getElementById("risk-bar");
+
+    function updateDisplay() {
+      display.innerText = currentTotal.toLocaleString("vi-VN");
+    }
+
+    function appendNumber(num) {
+      if (currentTotal === 0) {
+        currentTotal = num;
+      } else {
+        currentTotal = parseInt(currentTotal.toString() + num.toString());
+      }
+      updateDisplay();
+      vibrate();
+    }
+
+    function appendTripleZero() {
+      if (currentTotal === 0) return;
+      currentTotal = parseInt(currentTotal.toString() + "000");
+      updateDisplay();
+      vibrate();
+    }
+
+    function clearInput() {
+      currentTotal = 0;
+      updateDisplay();
+      vibrate();
+    }
+
+    function resetMoney() {
+      currentTotal = 0;
+      updateDisplay();
+    }
+
+    function vibrate() {
+      if (window.navigator.vibrate) window.navigator.vibrate(50);
+    }
+
+    function simulateScan() {
+      alert("Đang mở Camera... AI đang nhận diện món hàng.");
+      setTimeout(() => {
+        const amount = 62000;
+        currentTotal = amount;
+        updateDisplay();
+        alert("Đã nhận diện: 1 Lốc sữa + 2 Gói mì. Tổng: 62.000đ");
+      }, 1000);
+    }
+
+    function submitInvoice() {
+      if (currentTotal === 0) {
+        alert("Vui lòng nhập số tiền trước khi xuất đơn!");
+        return;
+      }
+
+      const btn = document.getElementById("btn-submit");
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ĐANG KÝ SỐ...';
+
+      // Lưu giao dịch
+      const now = new Date();
+      const transaction = {
+        id: Date.now(),
+        time: now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+        amount: currentTotal,
+        date: now.toLocaleDateString('vi-VN')
+      };
+      transactions.unshift(transaction); // Thêm vào đầu danh sách
+      // Save to localStorage
+      localStorage.setItem('transactions', JSON.stringify(transactions));
+
+      // Mô phỏng gửi dữ liệu
+      setTimeout(() => {
+        alert(
+          "THÀNH CÔNG! Hóa đơn đã được gửi lên cơ quan Thuế. Cô Lan đã tránh được rủi ro phạt."
+        );
+
+        resetMoney();
+        updateHistoryView();
+        updateReportView();
+
+        btn.disabled = false;
+        btn.innerHTML = "XÁC NHẬN & GỬI THUẾ";
+
+        // Cập nhật thanh rủi ro nhẹ
+        riskBar.style.width = "2%";
+      }, 1500);
+    }
+
+    // Navigation Logic
+    function switchView(viewName) {
+      // Hide all views
+      document.querySelectorAll('.view-section').forEach(el => {
+        el.classList.add('hidden');
+      });
+
+      // Show selected view
+      document.getElementById(viewName + '-view').classList.remove('hidden');
+
+      // Update Nav Active State
+      document.querySelectorAll('.nav-item').forEach(el => {
+        el.classList.remove('text-blue-700');
+        // Reset help to red-400 if not active, or handle standard logic
+        if (el.id === 'nav-help') {
+          el.classList.remove('text-red-600');
+          el.classList.add('text-red-400');
+        } else {
+          el.classList.add('text-gray-400');
+        }
+      });
+
+      const activeNav = document.getElementById('nav-' + viewName);
+      activeNav.classList.remove('text-gray-400');
+      if (viewName === 'help') {
+        activeNav.classList.remove('text-red-400');
+        activeNav.classList.add('text-red-600');
+      } else {
+        activeNav.classList.add('text-blue-700');
+      }
+    }
+
+    function updateHistoryView() {
+      const list = document.getElementById('history-list');
+      if (transactions.length === 0) {
+        list.innerHTML = '<div class="text-center text-gray-400 py-10">Chưa có giao dịch nào</div>';
+        return;
+      }
+
+      let html = '';
+      transactions.forEach(t => {
+        html += `
+                <div class="bg-white p-3 rounded-xl shadow-sm flex justify-between items-center border border-gray-100">
+                    <div class="flex items-center gap-3">
+                        <div class="bg-blue-100 w-10 h-10 rounded-full flex items-center justify-center text-blue-600">
+                            <i class="fas fa-shopping-bag"></i>
+                        </div>
+                        <div>
+                             <div class="font-bold text-gray-800">Bán lẻ</div>
+                            <div class="text-xs text-gray-500">${t.time} - ${t.date}</div>
+                        </div>
+                    </div>
+                    <div class="font-bold text-green-600">+${t.amount.toLocaleString('vi-VN')}đ</div>
+                </div>
+              `;
+      });
+      list.innerHTML = html;
+    }
+
+    function updateReportView() {
+      const total = transactions.reduce((sum, t) => sum + t.amount, 0);
+      document.getElementById('report-total').innerText = total.toLocaleString('vi-VN') + ' đ';
+    }
+
+    // Initial Load
+    updateHistoryView();
+    updateReportView();
+  </script>
+</body>
+
+</html>
