@@ -339,25 +339,54 @@
       }
     }
 
-    function onScanSuccess(decodedText, decodedResult) {
-      // Rung phản hồi khi tìm thấy mã
+    async function onScanSuccess(decodedText) {
       vibrate();
 
-      const product = products[decodedText];
+      // 1. Kiểm tra trong danh sách của cô Lan trước (Local DB)
+      let product = products[decodedText];
 
       if (product) {
-        // Tìm thấy sản phẩm trong DB mẫu
-        currentTotal = product.price;
-        updateDisplay();
-
-        // Đóng scanner và thông báo
-        stopScanner();
-        alert(`🛒 ${product.name}\n💰 Giá: ${product.price.toLocaleString('vi-VN')}đ`);
+        applyProduct(product);
       } else {
-        // Nếu sản phẩm lạ, tự động thêm vào giá 10k hoặc cho phép nhập
-        alert(`Mã lạ: ${decodedText}\nCô Lan vui lòng tự nhập giá món này!`);
-        stopScanner();
+        // 2. Nếu không có, đi "hỏi" Internet (Open Food Facts)
+        try {
+          const response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${decodedText}.json`);
+          const data = await response.json();
+
+          if (data.status === 1) {
+            const webProduct = {
+              name: data.product.product_name || "Sản phẩm mới",
+              price: 10000 // Server này thường không có giá VN, mặc định 10k để cô Lan sửa
+            };
+
+            // Hiển thị và hỏi cô Lan có muốn lưu không
+            const confirmPrice = prompt(`Tìm thấy: ${webProduct.name}\nCô Lan nhập giá bán (VNĐ):`, "10000");
+            if (confirmPrice) {
+              webProduct.price = parseInt(confirmPrice);
+              // Lưu vào máy để lần sau không phải hỏi lại
+              products[decodedText] = webProduct;
+              applyProduct(webProduct);
+            } else {
+              // User pressed cancel or empty
+              stopScanner();
+            }
+          } else {
+            alert("Mã vạch lạ quá, cô Lan tự nhập giá giúp con nhé!");
+            stopScanner();
+          }
+        } catch (error) {
+          console.error("Lỗi kết nối server mã vạch");
+          alert("Không có mạng hoặc lỗi server, cô Lan nhập tay nhé.");
+          stopScanner();
+        }
       }
+    }
+
+    function applyProduct(product) {
+      currentTotal = product.price;
+      updateDisplay();
+      stopScanner();
+      alert(`🛒 ${product.name}\n💰 Giá: ${product.price.toLocaleString('vi-VN')}đ`);
     }
 
     function onScanFailure(error) {
