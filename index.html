@@ -7,6 +7,7 @@
   <title>Sổ Thuế Tạp Hóa 2026</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
   <style>
     body {
       font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
@@ -41,6 +42,10 @@
         opacity: 1;
         transform: translateY(0);
       }
+    }
+
+    #scanner-modal {
+      background-color: rgba(0, 0, 0, 0.8);
     }
   </style>
 </head>
@@ -192,6 +197,24 @@
     </div>
   </main>
 
+  <!-- SCANNER MODAL -->
+  <div id="scanner-modal" class="fixed inset-0 z-50 hidden flex flex-col items-center justify-center p-4 fade-in">
+    <div class="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl relative">
+      <div class="p-4 bg-blue-800 text-white flex justify-between items-center">
+        <h3 class="font-bold text-lg"><i class="fas fa-qrcode"></i> QUÉT MÃ VẠCH</h3>
+        <button onclick="stopScanner()" class="text-white hover:text-red-300 transition-colors">
+          <i class="fas fa-times text-2xl"></i>
+        </button>
+      </div>
+      <div class="p-4 bg-black">
+        <div id="qr-reader" style="width: 100%;"></div>
+      </div>
+      <div class="p-4 text-center text-gray-500 text-sm">
+        Đưa mã vạch vào khung hình để nhận diện
+      </div>
+    </div>
+  </div>
+
   <nav
     class="fixed bottom-0 left-0 right-0 bg-white border-t flex justify-around p-3 text-[10px] font-bold text-gray-400 z-50">
     <div id="nav-home" onclick="switchView('home')"
@@ -259,14 +282,83 @@
       if (window.navigator.vibrate) window.navigator.vibrate(50);
     }
 
+    // Mock Product Database
+    const products = {
+      "8934868102868": { name: "Mì Hảo Hảo Tôm Chua Cay", price: 4500 },
+      "8934588013111": { name: "Nước ngọt Coca-Cola 320ml", price: 10000 },
+      "8934673155138": { name: "Snack Oishi Bắp Ngọt", price: 6000 },
+      "8935001701314": { name: "Sữa Tươi Vinamilk 180ml", price: 8000 },
+      "8936011773177": { name: "Bánh Karo Trứng Tươi", price: 12000 }
+    };
+
+    let html5QrcodeScanner = null;
+
     function simulateScan() {
-      alert("Đang mở Camera... AI đang nhận diện món hàng.");
-      setTimeout(() => {
-        const amount = 62000;
-        currentTotal = amount;
+      startScanner();
+    }
+
+    function startScanner() {
+      const modal = document.getElementById('scanner-modal');
+      modal.classList.remove('hidden');
+
+      // Kiểm tra nếu chưa có scanner thì mới tạo mới
+      if (!html5QrcodeScanner) {
+        html5QrcodeScanner = new Html5QrcodeScanner(
+          "qr-reader",
+          {
+            fps: 15, // Tăng fps để quét nhạy hơn
+            qrbox: { width: 280, height: 180 }, // Khung hình chữ nhật phù hợp mã vạch
+            aspectRatio: 1.0,
+            rememberLastUsedCamera: true,
+            supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA]
+          },
+          /* verbose= */ false
+        );
+      }
+
+      // Render scanner
+      html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+    }
+
+    async function stopScanner() {
+      const modal = document.getElementById('scanner-modal');
+      modal.classList.add('hidden');
+
+      if (html5QrcodeScanner) {
+        try {
+          // Phải dùng await clear() để giải phóng Camera hoàn toàn
+          await html5QrcodeScanner.clear();
+        } catch (error) {
+          console.error("Lỗi khi đóng camera:", error);
+        }
+      }
+    }
+
+    function onScanSuccess(decodedText, decodedResult) {
+      // Rung phản hồi khi tìm thấy mã
+      vibrate();
+
+      const product = products[decodedText];
+
+      if (product) {
+        // Tìm thấy sản phẩm trong DB mẫu
+        currentTotal = product.price;
         updateDisplay();
-        alert("Đã nhận diện: 1 Lốc sữa + 2 Gói mì. Tổng: 62.000đ");
-      }, 1000);
+
+        // Đóng scanner và thông báo
+        stopScanner();
+        alert(`🛒 ${product.name}\n💰 Giá: ${product.price.toLocaleString('vi-VN')}đ`);
+      } else {
+        // Nếu sản phẩm lạ, tự động thêm vào giá 10k hoặc cho phép nhập
+        alert(`Mã lạ: ${decodedText}\nCô Lan vui lòng tự nhập giá món này!`);
+        stopScanner();
+      }
+    }
+
+    function onScanFailure(error) {
+      // handle scan failure, usually better to ignore and keep scanning.
+      // for example:
+      // console.warn(`Code scan error = ${error}`);
     }
 
     function submitInvoice() {
