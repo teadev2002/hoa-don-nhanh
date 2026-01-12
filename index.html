@@ -282,119 +282,125 @@
       if (window.navigator.vibrate) window.navigator.vibrate(50);
     }
 
-    // Mock Product Database
-    const products = {
-      "8934868102868": { name: "Mì Hảo Hảo Tôm Chua Cay", price: 4500 },
-      "8934588013111": { name: "Nước ngọt Coca-Cola 320ml", price: 10000 },
-      "8934673155138": { name: "Snack Oishi Bắp Ngọt", price: 6000 },
-      "8935001701314": { name: "Sữa Tươi Vinamilk 180ml", price: 8000 },
-      "8936011773177": { name: "Bánh Karo Trứng Tươi", price: 12000 }
-    };
-
-    let html5QrCode = null;
+    // --- CLOUD VISION LOGIC ---
+    // Load saved products if any
+    let savedProducts = JSON.parse(localStorage.getItem('savedProducts')) || {};
+    let CLOUD_VISION_API_KEY = localStorage.getItem('CLOUD_VISION_API_KEY') || "";
 
     function simulateScan() {
-      startScanner();
+      // Trigger native camera
+      if (!CLOUD_VISION_API_KEY) {
+        const key = prompt("Vui lòng nhập Google Cloud Vision API Key để bắt đầu (Lưu 1 lần):");
+        if (key) {
+          CLOUD_VISION_API_KEY = key;
+          localStorage.setItem('CLOUD_VISION_API_KEY', key);
+        } else {
+          alert("Cần có API Key để nhận diện ảnh!");
+          return;
+        }
+      }
+      document.getElementById('camera-input').click();
     }
 
-    function startScanner() {
-      const modal = document.getElementById('scanner-modal');
-      modal.classList.remove('hidden');
+    function handleImageUpload(input) {
+      if (input.files && input.files[0]) {
+        const file = input.files[0];
+        const reader = new FileReader();
 
-      // Check for HTTPS
-      if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
-        alert('LỖI BẢO MẬT: Camera chỉ hoạt động trên HTTPS hoặc Localhost.\nNếu bạn đang test qua IP mạng LAN, hãy dùng HTTPS hoặc ngrok.');
-      }
+        // Show loading state
+        const btn = document.querySelector("#home-view > div:first-child"); // The camera button
+        const originalContent = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin text-4xl mb-2"></i><span class="font-bold">ĐANG NHẬN DIỆN...</span>';
 
-      // Use Html5Qrcode class for explicit error handling
-      if (!html5QrCode) {
-        html5QrCode = new Html5Qrcode("qr-reader");
-      }
+        reader.onload = async function (e) {
+          const base64String = e.target.result.split(',')[1]; // Remove data prefix
 
-      const config = { fps: 15, qrbox: { width: 250, height: 150 } };
+          const productName = await identifyProductByVision(base64String);
 
-      // Prefer back camera
-      html5QrCode.start(
-        { facingMode: "environment" },
-        config,
-        onScanSuccess,
-        onScanFailure
-      ).catch(err => {
-        console.error("Error starting scanner", err);
-        alert("Không thể mở Camera!\nLỗi: " + err + "\nHãy cấp quyền Camera cho trình duyệt.\nHOẶC truy cập bằng HTTPS.");
-        stopScanner(); // close modal
-      });
-    }
+          // Restore button
+          btn.innerHTML = originalContent;
 
-    function stopScanner() {
-      const modal = document.getElementById('scanner-modal');
-      modal.classList.add('hidden');
-      if (html5QrCode) {
-        html5QrCode.stop().then(() => {
-          console.log("Camera stopped");
-        }).catch(err => {
-          // Ignore if not running
-          console.warn("Stop failed (maybe not running)", err);
-        });
-      }
-    }
-
-    async function onScanSuccess(decodedText) {
-      vibrate();
-
-      // 1. Kiểm tra trong danh sách của cô Lan trước (Local DB)
-      let product = products[decodedText];
-
-      if (product) {
-        applyProduct(product);
-      } else {
-        // 2. Nếu không có, đi "hỏi" Internet (Open Food Facts)
-        try {
-          const response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${decodedText}.json`);
-          const data = await response.json();
-
-          if (data.status === 1) {
-            const webProduct = {
-              name: data.product.product_name || "Sản phẩm mới",
-              price: 10000 // Server này thường không có giá VN, mặc định 10k để cô Lan sửa
-            };
-
-            // Hiển thị và hỏi cô Lan có muốn lưu không
-            const confirmPrice = prompt(`Tìm thấy: ${webProduct.name}\nCô Lan nhập giá bán (VNĐ):`, "10000");
-            if (confirmPrice) {
-              webProduct.price = parseInt(confirmPrice);
-              // Lưu vào máy để lần sau không phải hỏi lại
-              products[decodedText] = webProduct;
-              applyProduct(webProduct);
-            } else {
-              // User pressed cancel or empty
-              stopScanner();
-            }
+          if (productName) {
+            handleIdentifiedProduct(productName);
           } else {
-            alert("Mã vạch lạ quá, cô Lan tự nhập giá giúp con nhé!");
-            stopScanner();
+            alert("Không nhận diện được sản phẩm! Cô Lan chụp lại cho rõ nhé.");
           }
-        } catch (error) {
-          console.error("Lỗi kết nối server mã vạch");
-          alert("Không có mạng hoặc lỗi server, cô Lan nhập tay nhé.");
-          stopScanner();
+        };
+
+        reader.readAsDataURL(file);
+      }
+      // Reset input
+      input.value = '';
+    }
+
+    async function identifyProductByVision(base64Image) {
+      const url = `https://vision.googleapis.com/v1/images:annotate?key=${CLOUD_VISION_API_KEY}`;
+      const requestData = {
+        requests: [
+          {
+            image: { content: base64Image },
+            features: [
+              { type: "LOGO_DETECTION", maxResults: 1 },
+              { type: "LABEL_DETECTION", maxResults: 3 },
+              { type: "TEXT_DETECTION", maxResults: 1 }
+            ]
+          }
+        ]
+      };
+
+      try {
+        const response = await fetch(url, {
+          method: "POST",
+          body: JSON.stringify(requestData)
+        });
+        const result = await response.json();
+        console.log("Vision Result:", result);
+
+        if (!result.responses || !result.responses[0]) return null;
+        const annotations = result.responses[0];
+        let productName = null;
+
+        if (annotations.logoAnnotations && annotations.logoAnnotations.length > 0) {
+          productName = annotations.logoAnnotations[0].description;
+        } else if (annotations.textAnnotations && annotations.textAnnotations.length > 0) {
+          const fullText = annotations.textAnnotations[0].description;
+          productName = fullText.split('\n').slice(0, 2).join(' ');
+        } else if (annotations.labelAnnotations && annotations.labelAnnotations.length > 0) {
+          productName = annotations.labelAnnotations[0].description;
+        }
+        return productName;
+      } catch (error) {
+        console.error("Lỗi kết nối Vision API:", error);
+        alert("Lỗi kết nối Google Cloud! Kiểm tra lại API Key hoặc Mạng.");
+        return null;
+      }
+    }
+
+    function handleIdentifiedProduct(name) {
+      vibrate();
+      const cleanName = name.trim();
+
+      // Check localStorage
+      if (savedProducts[cleanName]) {
+        const price = savedProducts[cleanName];
+        currentTotal = price;
+        updateDisplay();
+        alert(`� Nhận diện: ${cleanName}\n💰 Giá cũ: ${price.toLocaleString('vi-VN')}đ`);
+      } else {
+        // New product
+        const priceInput = prompt(`🌟 Sản phẩm mới: "${cleanName}"\nCô Lan nhập giá bán (VNĐ):`, "10000");
+        if (priceInput) {
+          const price = parseInt(priceInput);
+          savedProducts[cleanName] = price;
+          localStorage.setItem('savedProducts', JSON.stringify(savedProducts));
+
+          currentTotal = price;
+          updateDisplay();
         }
       }
     }
 
-    function applyProduct(product) {
-      currentTotal = product.price;
-      updateDisplay();
-      stopScanner();
-      alert(`🛒 ${product.name}\n💰 Giá: ${product.price.toLocaleString('vi-VN')}đ`);
-    }
-
-    function onScanFailure(error) {
-      // handle scan failure, usually better to ignore and keep scanning.
-      // for example:
-      // console.warn(`Code scan error = ${error}`);
-    }
-
+    /* REMOVED: Old Barcode Logic (startScanner, stopScanner, onScanSuccess) */
     function submitInvoice() {
       if (currentTotal === 0) {
         alert("Vui lòng nhập số tiền trước khi xuất đơn!");
